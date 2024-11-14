@@ -2,6 +2,7 @@ import numpy as np
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
 """
+###Part A
 def equations(radius, y):
     pressure, mass = y
     if pressure <= 0:
@@ -46,7 +47,9 @@ plt.title("Mass-Radius Relationship for White Dwarfs")
 plt.legend()
 plt.grid(True)
 plt.show()
-"""
+
+
+###Part B
 def equations(radius, y):
     pressure, mass = y
     if pressure <= 0:
@@ -91,19 +94,28 @@ plt.title("Mass-Radius Relationship for White Dwarfs")
 plt.legend()
 plt.grid(True)
 plt.show()
-"""
-def full_EOS():  # the full equation of state with the fermi-values derived from Part A and B and checking realistic densities and number densities for electrons
-    pf_values = np.linspace(1e-17, 4.7e-16, 30)
+#""" 
+
+### Part C
+pf_values = np.linspace(1e-17, 4.7e-16, 30)
+x_values = pf_values / 2.7e-17  # get the x-values from the fermi momentums
+
+#"""
+def full_EOS(x_values):  # the full equation of state with the fermi-values derived from Part A and B and checking realistic densities and number densities for electrons
     pressures = []
-    for p_f in pf_values: 
-        x = p_f / 2.7e-17
-        pressure = 5.8e22 * (x * (1 + x**2) ** (1/2) * (2 * x**2 / 3 - 1) + np.log(x +(1 + x**2) ** (1/2)))
+
+    for x in x_values: 
+        pressure = 5.8e22 * (x * (1 + x**2) ** (1/2) * (2 * x**2 / 3 - 1) + np.log(x + (1 + x**2) ** (1/2)))
         pressures.append(pressure)
-    return np.array(pressures), pf_values
 
-pressures, pf_values = full_EOS()
+    array_pressures = np.array(pressures)
 
-def interpolated_P_e(p_f): return np.interp(p_f, pf_values, pressures)  # interpolate P_e for a given fermi energy
+    return array_pressures
+
+P_e_values = full_EOS(x_values)
+
+def interpolated_P_e(x): return np.interp(x, x_values, P_e_values)  # interpolate P_e for a given fermi energy (x in this case)
+def interpolated_x(P_e): return np.interp(P_e, P_e_values, x_values)  # interpolate x for a given pressure
 
 def equations(radius, y):
     pressure, mass = y
@@ -115,5 +127,5 @@ def equations(radius, y):
     dm_dr = 4 * np.pi * radius**2 * rho
 
     return [dP_dr, dm_dr]
-"""
+#"""
 
