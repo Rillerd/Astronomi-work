@@ -63,12 +63,6 @@ def AGN_mean_energy(Q_0):
 
 def cross_section(E_mean): return sigma_0 * (E_mean / 13.6 ) ** (-3)  # cross section is 2.3e-18 cm^2 which is less than for ionization potential which it should be 
 
-"""
-We set x = n(H+)/ n_H = n_e / n_H, y = r / R_SO, assume low neutral fraction and thus n_H = 1-x << 1 and leads to 
-1 - x ~ (3 * y^2 * Q(0)) / (Q(r) * n_H * sigma * R_SO) << 1. And now assume large ionized fraction gives x approx 1, then
-Q(r) / Q_0 ~ 1-y^3 = 1- (r/R_SO)^3. Equate the two equations for Q(r) and we get n_H0 = 1 - x = 3 * 
-"""
-
 def hydrogen_number_density(r, R_SO, sigma):
     n_H_neutral = (3 * (r/R_SO) ** 2) / ((1 - (r/R_SO) ** 3) * n_H * sigma * R_SO)
     n_H_plus = 1 - (3 * (r/R_SO) ** 2) / ((1 - (r/R_SO) ** 3) * n_H * sigma * R_SO)
@@ -78,7 +72,6 @@ def hydrogen_number_density(r, R_SO, sigma):
 def optical_depth(radius): return n_H * sigma_0 * radius  # at the ionization threshold for hydrogen, our cross-section is the standard sigma_0
 
 
-#def mean_free_path(): return 1 / (n_H * sigma * 3.1e18)  # in pc
 def radius_values(R_SO): return np.linspace(0, 1.000001 * R_SO, 100000)
 
 
@@ -101,23 +94,21 @@ def densities_and_optical_depth(radiuses, R_SO, sigma):
     return pc_radiuses, density_neutral_values, density_ion_values, optical_depth_values
 
 
-def plotting(pc_radius, density_neutral_values, density_ion_values, optical_depth_values, R_SO):
-
-    x_min = R_SO / 3.1e18 - 0.01
-    x_max = R_SO / 3.1e18 + 0.01
+def plotting(pc_radius, density_neutral_values, density_ion_values, optical_depth_values, title):
 
     plt.plot(pc_radius, density_neutral_values, label = "HI")
     plt.plot(pc_radius, density_ion_values, label = "HII")
-    plt.xlim()                             #                 plt.xlim(0.26, 0.265)
     plt.ylim(0,1)
     plt.xlabel("Distance [pc]")
-    plt.ylabel("Ionization fraction")
+    plt.ylabel("Ionization fraction [X / n_H]")
+    plt.title(title)
     plt.legend()
     plt.show()
 
     plt.plot(pc_radius, optical_depth_values, label = "$\\tau$")
     plt.xlabel("Distance [pc]")
     plt.ylabel("Optical depth")
+    plt.title(title)
     plt.legend()
     plt.show()
 
@@ -133,7 +124,7 @@ def main():
     pc_radiuses, density_neutral_values, density_ion_values, tau = densities_and_optical_depth(radiuses, R_SO, sigma)
 
     print(f"\nO3 supernova\nR_SO = {R_SO / 3.1e18:.2f} pc, Q_0 = {Q_0:.1e}, <E> = {E_mean:.1f} eV, cross-section = {sigma:.1e} cm^2")
-    #plotting(pc_radiuses, density_neutral_values, density_ion_values, tau, R_SO)
+    plotting(pc_radiuses, density_neutral_values, density_ion_values, tau, "O3 star")
  
     Q_0 = AGN_Q_0()
     E_mean = AGN_mean_energy(Q_0)
@@ -143,7 +134,7 @@ def main():
     pc_radiuses, density_neutral_values, density_ion_values, tau = densities_and_optical_depth(radiuses, R_SO, sigma)
 
     print(f"\nAGN: \nR_SO = {R_SO / 3.1e18:.5f} pc, Q_0 = {Q_0:.1e}, <E> = {E_mean:.1f} eV, cross-section = {sigma:.1e} cm^2")
-    plotting(pc_radiuses, density_neutral_values, density_ion_values, tau, R_SO)
+    plotting(pc_radiuses, density_neutral_values, density_ion_values, tau, "AGN")
 
 
 
