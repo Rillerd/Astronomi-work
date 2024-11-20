@@ -32,9 +32,6 @@ def photon_ionization_rate(T, norm_const):
     return Q_0
 
 
-def stromgren_radius(Q_0): return ((3 * Q_0) / (4 * np.pi * n_H**2 * alpha_B))**(1/3) # cm
-
-
 def mean_energy(T, norm_const, Q_0):
     integrand = lambda nu:  (norm_const * blackbody(T, nu))
     flux, _ = quad(integrand, nu_0, 1e19)  # mean energy is the ratio between energy flux and photon flux, integral from nu0 to infinity l_nu
@@ -42,9 +39,9 @@ def mean_energy(T, norm_const, Q_0):
 
 
 #################################################################################################################################################################
-### The 3 functions below are required for part B
+#######                                           The 3 functions below are required for part B                                                           #######
 
-def AGN_luminosity(energy): return 1e41 * (energy / 13.6) ** (-3/2)
+def AGN_luminosity(energy): return 1e41 * (energy / 13.6) ** (-1.5)
 
 
 def AGN_Q_0():
@@ -63,16 +60,20 @@ def AGN_mean_energy(Q_0):
 
 def cross_section(E_mean): return sigma_0 * (E_mean / 13.6 ) ** (-3)  # cross section is 2.3e-18 cm^2 which is less than for ionization potential which it should be 
 
+
+def stromgren_radius(Q_0): return ((3 * Q_0) / (4 * np.pi * n_H**2 * alpha_B))**(1/3) # cm
+
+
 def hydrogen_number_density(r, R_SO, sigma):
     n_H_neutral = (3 * (r/R_SO) ** 2) / ((1 - (r/R_SO) ** 3) * n_H * sigma * R_SO)
-    n_H_plus = 1 - (3 * (r/R_SO) ** 2) / ((1 - (r/R_SO) ** 3) * n_H * sigma * R_SO)
+    n_H_plus = 1 - n_H_neutral
     return n_H_neutral, n_H_plus
 
 
-def optical_depth(radius): return n_H * sigma_0 * radius  # at the ionization threshold for hydrogen, our cross-section is the standard sigma_0
+def optical_depth(radius, n_H_neutral): return n_H_neutral * sigma_0 * radius  # at the ionization threshold for hydrogen, our cross-section is the standard sigma_0
 
 
-def radius_values(R_SO): return np.linspace(0, 1.000001 * R_SO, 100000)
+def radius_values(R_SO): return np.linspace(0, 1.2 * R_SO, 100000)
 
 
 def densities_and_optical_depth(radiuses, R_SO, sigma):
@@ -83,7 +84,7 @@ def densities_and_optical_depth(radiuses, R_SO, sigma):
 
     for radius in radiuses:
         density_neutral, density_ion = hydrogen_number_density(radius, R_SO, sigma)
-        tau = optical_depth(radius)
+        tau = optical_depth(radius, density_neutral)
         density_neutral_values.append(density_neutral)
         density_ion_values.append(density_ion)
         optical_depth_values.append(tau)
@@ -108,6 +109,7 @@ def plotting(pc_radius, density_neutral_values, density_ion_values, optical_dept
     plt.plot(pc_radius, optical_depth_values, label = "$\\tau$")
     plt.xlabel("Distance [pc]")
     plt.ylabel("Optical depth")
+    plt.yscale("log")
     plt.title(title)
     plt.legend()
     plt.show()
