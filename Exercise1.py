@@ -104,11 +104,11 @@ def collisional_cooling(T, density_ion_ratio, density_neutral_ratio):
     energy_difference = 10.23 * 1.6e-12  # erg
     omega_12 = 0.69  # for T = 2e4 K
     omega_gamma2 = 0.35  # for T = 2e4 K 
-    gaunt_factor_S = 2
-    gaunt_factor_P = 6
+    stat_weight_S = 2
+    stat_weight_P = 6
 
-    q_22P  = (8.629e-6 * omega_12) / (T ** (1/2) * gaunt_factor_P )  * np.exp(-energy_difference / (k_B * T))# collision excitation rate coefficient for 2^2P
-    q_22S  = (8.629e-6 * omega_gamma2) / ( T ** (1/2) * gaunt_factor_S) *  np.exp(-energy_difference / (k_B * T))# collision excitation rate coefficient 2^2S
+    q_22P  = (8.629e-6 * omega_12) / (T ** (1/2) * stat_weight_P )  * np.exp(-energy_difference / (k_B * T))# collision excitation rate coefficient for 2^2P
+    q_22S  = (8.629e-6 * omega_gamma2) / ( T ** (1/2) * stat_weight_S) *  np.exp(-energy_difference / (k_B * T))# collision excitation rate coefficient 2^2S
 
     return n_H_plus * n_H_neutral * (A_2gamma * q_22S +  A_21 * q_22P) * energy_difference  # sedan plottad över n_H * n_e 
 
@@ -116,48 +116,46 @@ def collisional_cooling(T, density_ion_ratio, density_neutral_ratio):
 def total_cooling(T, density_ion_ratio, density_neutral_ratio): return free_free_cooling(T, density_ion_ratio) + recombination_cooling(T, density_ion_ratio) + collisional_cooling(T, density_ion_ratio, density_neutral_ratio)
 
 
-def plotting_all_rates(density_ion_ratio_values, density_neutral_ratio_values):
-    ff_values = []
-    rr_values = []
-    ce_values = []
-    heating_values = []
-    cooling_values = []
-    temperatures = np.logspace(3,5, 100)
+ff_values = []
+rr_values = []
+ce_values = []
+heating_values = []
+cooling_values = []
+temperatures = np.logspace(3,5, 100)
 
-    for density_ion_ratio, density_neutral_ratio in zip(density_ion_ratio_values, density_neutral_ratio_values):
-        ion_density = density_ion_ratio * n_H
-        neutral_density = density_neutral_ratio * n_H
-        norm_factor = ion_density * n_H
+ion_ratio = 0.9
+neutral_ratio = 0.1
+norm_factor = ion_ratio * n_H ** 2
 
-        for T in temperatures:
-            ff = free_free_cooling(T, ion_density)
-            rr = recombination_cooling(T, ion_density)
-            ce = collisional_cooling(T, ion_density, neutral_density)
-            hr = heating(T, ion_density)
-            cooling = total_cooling(T, ion_density, neutral_density)
-            ff_values.append(ff / norm_factor)
-            rr_values.append(rr / norm_factor)
-            ce_values.append(ce / norm_factor)
-            heating_values.append(hr / norm_factor)
-            cooling_values.append(cooling / norm_factor)
+for T in temperatures:
+    ff = free_free_cooling(T, ion_ratio)
+    rr = recombination_cooling(T, ion_ratio)
+    ce = collisional_cooling(T, ion_ratio, neutral_ratio)
+    hr = heating(T, ion_ratio)
+    cooling = total_cooling(T, ion_ratio, neutral_ratio)
+    ff_values.append(ff / norm_factor)
+    rr_values.append(rr / norm_factor)
+    ce_values.append(ce / norm_factor)
+    heating_values.append(hr / norm_factor)
+    cooling_values.append(cooling / norm_factor)
 
-    plt.figure(figsize=(10, 6))
-    plt.plot(temperatures, heating_values, label="Heating", color="orange")
-    plt.plot(temperatures, rr_values, label="Recombination Cooling", color="blue")
-    plt.plot(temperatures, ff_values, label="Free-Free Cooling", color="green")
-    plt.plot(temperatures, ce_values, label="Collisional Cooling", color="red")
-    plt.plot(temperatures, cooling_values, label="Total Cooling", color="purple", linestyle="--")
+plt.figure(figsize=(10, 6))
+plt.plot(temperatures, heating_values, label="Heating", color="orange")
+plt.plot(temperatures, rr_values, label="Recombination Cooling", color="blue")
+plt.plot(temperatures, ff_values, label="Free-Free Cooling", color="green")
+plt.plot(temperatures, ce_values, label="Collisional Cooling", color="red")
+plt.plot(temperatures, cooling_values, label="Total Cooling", color="purple", linestyle="--")
 
-    # Labels and legend
-    plt.xlabel("Temperature [K]")
-    plt.ylabel("Rate per n_e n_H [erg cm^3 s^-1]")
-    plt.xlim(1000, 7000)
-    plt.ylim(1e-26, 1e-24)
-    plt.yscale("log")
-    plt.title("Normalized Heating and Cooling Rates vs Temperature")
-    plt.tick_params(axis="both", which="both", direction="in", top=True, right=True)
-    plt.legend()
-    plt.show()
+# Labels and legend
+plt.xlabel("Temperature [K]")
+plt.ylabel("Rate per n_e n_H [erg cm^3 s^-1]")
+plt.xlim(1000, 9000)
+plt.ylim(1e-26, 1e-24)
+plt.yscale("log")
+plt.title("Normalized Heating and Cooling Rates vs Temperature")
+plt.tick_params(axis="both", which="both", direction="in", top=True, right=True)
+plt.legend()
+plt.show()
     
 ##################################################################################################################################################################################################################
 
@@ -209,7 +207,7 @@ def main():
     sigma = cross_section(E_mean)
     radiuses = radius_values(R_SO)
     pc_radiuses, density_neutral_ratio_values, density_ion_ratio_values, tau = densities_and_optical_depth(radiuses, R_SO, sigma)
-    plotting_all_rates(density_ion_ratio_values, density_neutral_ratio_values)
+    #plotting_all_rates(density_ion_ratio_values, density_neutral_ratio_values)
     #print(f"\nO3 supernova\nR_SO = {R_SO / 3.1e18:.2f} pc, Q_0 = {Q_0:.1e}, <E> = {E_mean:.1f} eV, cross-section = {sigma:.1e} cm^2")
     #plotting(pc_radiuses, density_neutral_ratio_values, density_ion_ratio_values, tau, "O3 star")
     """
