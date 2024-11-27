@@ -46,7 +46,7 @@ def blackbody(nu, radius):
 
 
 def specific_luminosity(nu):
-    integrand = lambda radius: 2 * np.pi * radius * blackbody(nu, radius)
+    integrand = lambda radius: 2 * np.pi * radius * np.pi * blackbody(nu, radius)
     L_nu, _ = quad(integrand, r_ISCO, r_keppler)
     return L_nu
 
