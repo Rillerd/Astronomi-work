@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.integrate import quad
 import matplotlib.pyplot as plt
+import Exercise3 as ex
 
 
 ### Constants
@@ -78,8 +79,25 @@ def optical_depth(radius, n_H_neutral): return n_H_neutral * sigma_0 * radius  #
 def radius_values(R_SO): return np.linspace(0, 1.2 * R_SO, 1000)
 
 
-####################################################################################################################################################################################
+##################################################################################################################################################################################################################
+##################################################################################################################################################################################################################
+                                                  #############s####################      Exercise 3B        ###########################################
+
+
+def OIII_cooling_rate():
+
+    n_OIII = 5.37e-4 * n_H  # number density for doubly ionized oxygen
+
+    a, b, j_1S_1D, j_1S_3P, j_1D_3P2, j_1D_3P1 = ex.emissivity_values(n_OIII)
+    total_emissivity = [sum(values) for values in zip(j_1S_1D, j_1S_3P, j_1D_3P2, j_1D_3P1)]
+    cooling_rate = [j * n_OIII for j in total_emissivity]
+    return cooling_rate
+
+
+##############################################################################################################################################################################################################################################################################################################################################################################################################################################
+#####################################################################################################################################################################################################
                                   ############################## Exercise 2   ##############################
+
 
 def heating(T, ion_ratio): 
     n_H_plus = ion_ratio * n_H
@@ -90,7 +108,7 @@ def heating(T, ion_ratio):
 def recombination_cooling(T, ion_ratio):   
     n_H_plus = ion_ratio * n_H
     alpha_B = 2.59e-13 * (T / 1e4) ** (-0.833-0.035 * np.log(T / 1e4))
-    return n_H_plus ** 2 *  alpha_B * (0.684 - 0.0416 * np.log(T/1e4)) * k_B * T
+    return n_H_plus ** 2 *  alpha_B * k_B * T
 
 
 def free_free_cooling(T, ion_ratio): 
@@ -119,6 +137,7 @@ def collisional_cooling(T, ion_ratio, neutral_ratio):
 
 def total_cooling(T, ion_ratio, neutral_ratio): return free_free_cooling(T, ion_ratio) + recombination_cooling(T, ion_ratio) + collisional_cooling(T, ion_ratio, neutral_ratio)
 
+
 def plotting_all_rates():
 
     ff_values = []
@@ -126,7 +145,8 @@ def plotting_all_rates():
     ce_values = []
     heating_values = []
     cooling_values = []
-    temperatures = np.logspace(3,5, 100)
+    OIII_cooling = OIII_cooling_rate()
+    temperatures = np.linspace(100, 1e5, 1000)
 
     
     neutral_ratio = 1e-4  #  neutral
@@ -147,26 +167,32 @@ def plotting_all_rates():
         heating_values.append(heat / norm_factor)
         cooling_values.append(cooling / norm_factor)
 
+    total_cooling_with_OIII = [sum(i) for i in zip(cooling_values, OIII_cooling)]
+
+
     plt.figure(figsize=(10, 6))
     plt.plot(temperatures, heating_values, label="Heating", color="orange")
     plt.plot(temperatures, rr_values, label="Recombination Cooling", color="blue")
     plt.plot(temperatures, ff_values, label="Free-Free Cooling", color="green")
     plt.plot(temperatures, ce_values, label="Collisional Cooling", color="red")
-    plt.plot(temperatures, cooling_values, label="Total Cooling", color="purple", linestyle="--")
+    plt.plot(temperatures, OIII_cooling, label = "OIII cooling", color = "yellow")
+    plt.plot(temperatures, total_cooling_with_OIII, label="Total Cooling", color="purple", linestyle="--")
 
     # Labels and legend
     plt.xlabel("Temperature [K]")
     plt.ylabel("Rate per n_e n_H [erg cm^3 s^-1]")
-    #plt.xlim(1000, 9000)
-    #plt.ylim(1e-26, 1e-24)
+    plt.xlim(0, 9000)
+    plt.ylim(1e-26, 1e-20)
     plt.yscale("log")
     plt.title("Normalized Heating and Cooling Rates vs Temperature")
     plt.tick_params(axis="both", which="both", direction="in", top=True, right=True)
     plt.legend()
     plt.show()
-    
-##################################################################################################################################################################################################################
-##################################################################################################################################################################################################################
+
+
+##############################################################################################################################################################################################################################################################################################################################################################################################################################################
+############################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################
+
 
 def densities_and_optical_depth(radiuses, R_SO, sigma):
 
