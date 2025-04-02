@@ -124,6 +124,7 @@ def getAcceleration(position, mass_particles):
 
     # CALCULATED ACCELERATION HERE
     for index in numba.prange(nparticle):
+
         """
         ### FIRST ITERATION OF MY ACCELERATION CODE, IT WAS VERY SLOW
         i = position[:,index]  # get element of one column (particle)
@@ -137,6 +138,9 @@ def getAcceleration(position, mass_particles):
         acc[1, index] = acceleration[1]  # use index to store the acceleration in the same index spot as the particles position
         
         ### SECOND ITERATION OF MY ACCELERATION CODE, IT WAS TWICE AS FAST
+        ### INSTEAD OF HAVING TO MAKE A HUGE MATRIX FOR EACH PARTICLE, TOOK A COPY OF ONE PARTICLE AND SUBTRACTED ALL THE VALUES WITH THE SUBTRACTED PARTICLE WHICH WAS POSSIBLE DUE To
+        ### RESHAPING IT TO A 2x1 DIMENSION ARRAY. ALSO CHANGED np.power and np.sqrt TO ** 0.5 and ** 3 and **2 WHICH IS MUCH FASTER
+
         i = position[:,index].copy().reshape(ndim,1)  # get element of one column (particle) in a 2x1 dimension, so no need to make entire matrix of it and thus faster, need to copy, dont know why
 
         distance_vec = position - i  # calculate the vector
@@ -146,7 +150,7 @@ def getAcceleration(position, mass_particles):
         distance_third = (distance + 0.1*Rg) ** 3  # take it to teh third power
         
         acc[:, index] = G * np.sum( mass_particles * distance_vec/ distance_third, axis = 1)  # calculate the acceleration vector and store in both columns at same time
-        """### THIRD ITERATION OF MY CODE, LIKE 10x AS FAST AS THE SECOND ONE 
+        """### THIRD ITERATION OF MY CODE, LIKE 10x AS FAST AS THE SECOND ONE. MUCH FASTER DUE TO SUBTRACTING WHOLE ROWS INSTEAD OF GOING ELEMENT BY ELEMENT. NOT SUBTRACTING COLUMN WHICH JUMPS IN MEMORY AND THUS SLOWER
         ix = position[0,:] - position[0, index]
         iy = position[1,:] - position[1, index]
 
@@ -155,6 +159,7 @@ def getAcceleration(position, mass_particles):
         
         acc[0,index] = G * np.sum(mass_particles * ix / distance_qubed)
         acc[1, index] = G * np.sum(mass_particles * iy / distance_qubed)
+    return acc
 
     return acc
 
