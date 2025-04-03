@@ -118,7 +118,8 @@ def getdW(pos, p0, h):
 
 def getRho(position, p0, h, mass_particles):  # why do we want p0 as an argument, cant we just take it as an index of position and loop it?
 
-    rho = np.zeros(len(mass_particles))
+    ndim, npos = position.shape
+    rho = np.zeros(npos)
     W = getW(position, p0, h)
     rho = np.sum(mass_particles * W)  # with probably some axis, probably wrong
 
