@@ -116,20 +116,25 @@ def getdW(pos, p0, h):
     
 # ******************************************
 
-def getRho(position, p0, h, mass_particles):  # why do we want p0 as an argument, cant we just take it as an index of position and loop it?
+def getRho(position, h, mass_particles):  # why do we want p0 as an argument, cant we just take it as an index of position and loop it?
 
     ndim, npos = position.shape
     rho = np.zeros(npos)
-    W = getW(position, p0, h)
-    rho = np.sum(mass_particles * W)  # with probably some axis, probably wrong
+
+    for index in range(npos):  # probably use numba here also
+        W = getW(position, position[:,index], h)
+        rho[index] = np.sum(mass_particles * W)  #probably wrong
 
     return rho
 
-def getPressure(position, p0, h, mass_particles):  # why do we want p0 as an argument, cant we just take it as an index of position and loop it?
+def getPressure(position, h, mass_particles):  # why do we want p0 as an argument, cant we just take it as an index of position and loop it?
 
-    pressure = np.zeros(len(mass_particles))
-    dW = getdW(position, p0, h)
-    pressure = -2*kappa*np.sum(mass_particles * dW)  # probably wrong, but a start to vizualise it. What is kappa?
+    ndim, npos = position.shape
+    pressure = np.zeros(npos)
+
+    for index in range(npos):
+        dW = getdW(position, position[:, index], h)
+        pressure[index] = -2*kappa*np.sum(mass_particles * dW)  # probably wrong, but a start to vizualise it. What is kappa?
 
     return pressure
 
@@ -143,28 +148,36 @@ if __name__ == "__main__":
     dt = tau * 0.01
     h = 0.1
 
+    #Initialize the beginning parameters
     position, velocity, mass_particles = InitialConditions(n_star, ...)
 
-    for index in range(n_star):
-        W = getW(position, position[:,index], h)
-        dW = getdW(position, position[:,index], h)
-        rho = getRho(position, position[:,index], h, mass_particles)
-        pressure = getPressure(position, position[:, index], h, mass_particles)
+    rho = getRho(position, h, mass_particles)
 
-        acc = getAcceleration(position, mass_particles)
+    pressure = getPressure(position, h, mass_particles)
 
-        real_acc = - pressure + acc - velocity * viscous_term
-        #put in leapfrog here
+    acc = getAcceleration(position, mass_particles)
 
 
+    #Leapfrog iteration to update them
+    for tt in range(1, n_step):
+
+        #No clue if this is how to implement the real acceleration
+        real_acc =  acc - pressure - velocity * viscous_term  # get the real acceleration in star due to pressure and viscocity
+
+        velocity = velocity + real_acc * dt / 2  # calculate new velocity at the half step
+        position = position + velocity * dt  # calculate position at the full step
+        acc = getAcceleration(position, mass_particles)  # calculate the particle acceleration at the full step
+        velocity = velocity + real_acc * dt / 2  # calculate new velocity at the full step
+        
+
+        if(tt%4 == 0):
 
 
 
-        #this is the plot I think
-        x =
-        y = 
-        ygr, xgr = np.meshgrid(x,y, indexing="ij")
-        pos = np.ascontiguousarray([xgr.flatten(), ygr.flatten()])
-        rho = getRho(position, p0, h, mass_particles)
-        rho = rho.reshape((ngrid,ngrid))
+            #this is the plot I think
+            x =
+            y = 
+            ygr, xgr = np.meshgrid(x,y, indexing="ij")
+            pos = np.ascontiguousarray([xgr.flatten(), ygr.flatten()])
+            rho = rho.reshape((ngrid,ngrid))
     
