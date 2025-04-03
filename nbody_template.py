@@ -14,6 +14,7 @@ import numba
 import matplotlib.pyplot as plt; plt.ion()
 import os
 
+
 # ******* Some useful quantities ***********
 
 G = 6.67E-11                # N m^2 / kg^2
@@ -54,17 +55,17 @@ def mkGalaxy2D(n_particle, Galaxy_radius, Galaxy_mass, x0=0.0, y0=0.0, vx0=0.0, 
 
     position[0] = r * np.cos(theta)  # get x position of each particle
     position[1] = r * np.sin(theta)  # get y position of each particle 
+
+    velocity[0] = -position[1] / r
+    velocity[1] = position[0] / r
+
+    for i in range(n_particle):
+        index = np.where(r <= r[i])[0]
+        mass_r = len(index) * mass_particles
+        v_rot = 0.3 * (G * mass_r / r[i]) ** 0.5
+        velocity[0,i] = velocity[0,i] * v_rot
+        velocity[1,i] = velocity[1,i] * v_rot
     
-    velocity[0] = -position[1]  # transpose the position vector and take negative of one to get an orthogonal direction to the position vector, perpendicular direction
-    velocity[1] = position[0]  
-
-
-    denumerator = np.sqrt(np.square(velocity[0, :]) + np.square(velocity[1, :]))
-
-    vrot= np.sqrt(G * Galaxy_mass / r) * 0.05  
-    velocity[0, :] = velocity[0, :] / denumerator * vrot
-    velocity[1, :] = velocity[1, :] / denumerator * vrot # this is just the direction of the velocity, not the acutal velocity
-
     
     # Add the global offsets in position and velocity
     
@@ -89,7 +90,7 @@ def InitialConditions(n_galaxy1, n_galaxy2):
     # place galaxies
     
     position1, velocity1, mass_particles1 = mkGalaxy2D(n_galaxy1, Rg, Mg, 0.0, 0.0, 0.0, 0.0)
-    position2, velocity2, mass_particles2 = mkGalaxy2D(n_galaxy2, Rg / 3, Mg*0.01, 8*Rg, 2.5*Rg, -Rg / (2*tau), 0)
+    position2, velocity2, mass_particles2 = mkGalaxy2D(n_galaxy2, Rg, Mg, 8*Rg, 2.5*Rg, -Rg / (2*tau), 0)
 
 
 
@@ -113,11 +114,6 @@ def InitialConditions(n_galaxy1, n_galaxy2):
 
 @numba.njit(fastmath = True, parallel = True)
 def getAcceleration(position, mass_particles):
-    """
-    Given an array of particle positions p(n_dim, n_particle),
-    calculate the net acceleration at the location of each particle
-    from their gravitational interaction with the rest
-    """
 
     ndim, nparticle = position.shape
     acc = np.zeros((ndim, nparticle))
@@ -161,9 +157,9 @@ def getAcceleration(position, mass_particles):
         acc[1, index] = G * np.sum(mass_particles * iy / distance_qubed)
     return acc
 
-    return acc
 
-#multipled 0.08 with galaxy radius because the particles may be too heavy 
+
+#multipled 0.08 with galaxy radius because the particles may be too heavy and thus not be bound by the gravitational force and thus be shot out of the system
     
 # ******************************************
 
@@ -173,9 +169,9 @@ if __name__ == "__main__":  # main program, not executed if you import this file
 
     # simulation parameters (feel free to change them)
     
-    n_step = 2000
-    n_galaxy_1 = 6000
-    n_galaxy_2 = 1000
+    n_step = 3000
+    n_galaxy_1 = 5000
+    n_galaxy_2 = 5000
     dt = tau * 0.01
 
 
@@ -237,7 +233,7 @@ if __name__ == "__main__":  # main program, not executed if you import this file
         # to save some time, only update the plot every 4
         # iterations
 
-        if(tt%2 == 0):
+        if(tt%4 == 0):
 
             # update the data points in each of the plots,
             # keeping all labels and axes exactly the same
