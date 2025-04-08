@@ -3,9 +3,32 @@ Routines to compute the smoothing kernel in 2D SPH models
 
 AS8003: Computational astrophysics, Department of Astronomy, Stockholm University
 
-"""
-from nbody_template import *
+"""  # SAVE GRAPHICS AS PDF, NOT PNG
 import numpy as np 
+import matplotlib.pyplot as plt; plt.ion()
+import numba
+# ******************************************
+# USEFUL CONSTANTS#
+Rg = 9.5E17       
+R_sun = 7e5
+M_sun = 1.99E30
+Mg = 1.54E12 * M_sun 
+G = 6.67E-11
+tau = (R_sun**3 / (G*M_sun))**0.5 # time unit
+n_dim = 2
+
+kappa = 7.E-6
+viscous_term = 100
+h = 0.02*R_sun
+
+# ******************************************
+
+"""
+Routines to compute the smoothing kernel in 2D SPH models
+
+AS8003: Computational astrophysics, Department of Astronomy, Stockholm University
+
+"""
 
 # ******************************************
 
@@ -55,7 +78,7 @@ def getW(pos, p0, h):
     
     # Case 2
     
-    idx = (q<2.0) & (q>=1.0)
+    idx = ((q<2.0) & (q>=1.0))
     qidx = q[idx]
     W[idx] = C * (2.0 - qidx)**3
 
@@ -66,9 +89,12 @@ def getW(pos, p0, h):
 
 # ******************************************
 
-def getdW(pos, p0, h):
+@numba.njit(fastmath=True)
+def getdW(pi, pj, h):
     """
-    See definitions above in getW.
+    pi: coordinates of particle i
+    pj: coordinates of particle j (the kernel of this one is projected at location i).
+    h: smoothing distance
     
     Computes dW/dx and dW/dy:
 
@@ -76,108 +102,137 @@ def getdW(pos, p0, h):
             case 1: ((2-q)**2 - 4*(1-q)**2) * pos_{x,y} / r
             case 2: (2-q)**2 * pos_{x,y} / r
             case 3: 0.0
-
     Coded by J. de la Cruz Rodriguez (ISP-SU, 2025)
     """
 
-    # Init som variables and dimensions
+    # Init constant
     
-    C = 15.0 / (14.0 * np.pi * h**3)
-    ndim, npos = pos.shape
-    dW = np.zeros((ndim, npos))
+    Norm = - 15.0 / (14.0 * np.pi * h**3)
 
     
-    # subtract p0 from all particle positions in pos to compute r - rj
+    # get distance vector ri - rj
+    
+    dr = pi - pj 
+    r = np.sqrt((dr**2).sum())
 
-    dr = pos - np.outer(p0, np.ones(npos))
-    r = np.sqrt((dr**2).sum(axis=0))
+    # define q
     q = r / h
-    
 
-    # Case 1
+    tmp = 0.0
     
-    idx = (q < 1.0) & (q>0.0)
-    qidx = np.ascontiguousarray(q[idx])
-    
-    tmp = C * ((2.0 - qidx)**2 - 4.0*(1.0-qidx)**2) / (qidx*h)
-    dW[0, idx] =  tmp * dr[0, idx]
-    dW[1, idx] =  tmp * dr[1, idx]
+    if(q >= 2.0): # case q >= 2
+        tmp = 0.0
+        
+    elif(q >= 1.0): # case q > 1 and q < 2
+        tmp = Norm * ((2.0 - q)**2) / (r)
 
-    
-    # Case 2
-    
-    idx = (q<2.0) & (q>=1.0)
-    qidx = np.ascontiguousarray(q[idx])
-    tmp = C * ((2.0 - qidx)**2 - 4.0*(1.0-qidx)**2) / (qidx*h)
-    dW[0, idx] = tmp * dr[0,idx]
-    dW[1, idx] = tmp * dr[1,idx]
+    elif(q > 0.0): # case q > 0.0 and q<1.0
+        tmp = Norm * ((2.0 - q)**2 - 4.0*(1.0-q)**2) / (r)
 
-    return dW
+    return tmp * dr
     
 # ******************************************
 
-def getRho(position, h, mass_particles):  # why do we want p0 as an argument, cant we just take it as an index of position and loop it?
 
-    ndim, npos = position.shape
-    rho = np.zeros(npos)
+def mkStar2D(n_particle, Star_radius, Star_mass):
 
-    for index in range(npos):  # probably use numba here also
-        W = getW(position, position[:,index], h)
-        rho[index] = np.sum(mass_particles * W)  #probably wrong
+    position  = np.zeros((n_dim, n_particle))  # first row is x position of particle, second row is y position of particle
+    velocity  = np.zeros((n_dim, n_particle))  # first row is x velocity of particle, second row is y velocity of particle
+    mass_particles = np.zeros(n_particle)
 
-    return rho
+    ## Implement everything here! to fill these arrays
+    mass_particles =  Star_mass / n_particle  # get mass for each particle
+    
+    r = np.abs(np.random.normal(0, Star_radius, n_particle))  # get r position of particle
+    theta = np.random.uniform(0, 2*np.pi, n_particle)  # get theta for each particle
 
-def getPressure(position, h, mass_particles):  # why do we want p0 as an argument, cant we just take it as an index of position and loop it?
+    position[0] = r * np.cos(theta)  # get x position of each particle
+    position[1] = r * np.sin(theta)  # get y position of each particle 
 
-    ndim, npos = position.shape
-    pressure = np.zeros(npos)
+    return position, velocity, mass_particles
 
-    for index in range(npos):
-        dW = getdW(position, position[:, index], h)
-        pressure[index] = -2*kappa*np.sum(mass_particles * dW)  # probably wrong, but a start to vizualise it. What is kappa?
 
-    return pressure
+@numba.njit(fastmath=True,parallel=True)
+def getAcceleration(position, mass_particles, h, kappa, viscous_term, velocity):
+
+    ndim, nparticle = position.shape
+    acc = np.zeros((ndim, nparticle))
+    
+
+    # CALCULATED ACCELERATION HERE
+    for index in numba.prange(nparticle):
+
+        p_i = position[:,index]
+        acc_i = np.zeros(ndim)
+
+        for j in range(nparticle):
+            if(index != j):
+                p_j = position[:,j]
+                dr = p_j - p_i
+                distance_sqrt = np.sqrt((dr**2).sum())
+                distance_qubed = max(0.01*R_sun,distance_sqrt)**3 
+        
+                acc_i += G * mass_particles * dr / distance_qubed
+                acc_i -= 2 * kappa * mass_particles * getdW(p_i, p_j, h)
+        acc[:,index] = acc_i - viscous_term * velocity[:,index]
+                                   
+    return acc
 
 
 if __name__ == "__main__":
 
-    viscous_term = 0.5
-    ngrid = 200
-    n_step = 1000
-    n_star = 2000
-    dt = tau * 0.01
-    h = 0.1
+
+
+    n_step = 10000
+    n_star = 1000
+    dt = tau * 0.0003
 
     #Initialize the beginning parameters
-    position, velocity, mass_particles = InitialConditions(n_star, ...)
+    position, velocity, mass_particles = mkStar2D(n_star, 0.4*R_sun, M_sun)
 
-    rho = getRho(position, h, mass_particles)
+    acc = getAcceleration(position, mass_particles, h, kappa, viscous_term, velocity)
 
-    pressure = getPressure(position, h, mass_particles)
 
-    acc = getAcceleration(position, mass_particles)
+    f, ax = plt.subplots(figsize=(6,6))
+    
+    d0, = ax.plot(position[0]/R_sun, position[1]/R_sun, 'o', color='orangered', ms=2.5, alpha=0.5, linewidth=0, mew=0)
+    
+    
+    # plot labels
+    
+    ax.set_ylabel("y/Rg")
+    ax.set_xlabel("x/Rg")
+    ax.set_title("t_step={0}".format(0))
 
+    
+    # Fill the limits of your plot!
+    
+    ax.set_xlim()
+    ax.set_ylim()
+    f.savefig("bla.pdf")
 
     #Leapfrog iteration to update them
-    for tt in range(1, n_step):
+    for tt in range(1,n_step):
 
         #No clue if this is how to implement the real acceleration
-        real_acc =  acc - pressure - velocity * viscous_term  # get the real acceleration in star due to pressure and viscocity
 
-        velocity = velocity + real_acc * dt / 2  # calculate new velocity at the half step
+        velocity = velocity + acc * dt / 2  # calculate new velocity a the half step
         position = position + velocity * dt  # calculate position at the full step
-        acc = getAcceleration(position, mass_particles)  # calculate the particle acceleration at the full step
-        velocity = velocity + real_acc * dt / 2  # calculate new velocity at the full step
-        
+        acc = getAcceleration(position, mass_particles, h, kappa, viscous_term, velocity)  # calculate the acceleration at the full step
+        velocity = velocity + acc * dt / 2  # calculate new velocity at the full step
 
         if(tt%4 == 0):
 
 
+            d0.set_data(position[0]/R_sun, position[1]/R_sun)
 
-            #this is the plot I think
-            x =
-            y = 
-            ygr, xgr = np.meshgrid(x,y, indexing="ij")
-            pos = np.ascontiguousarray([xgr.flatten(), ygr.flatten()])
-            rho = rho.reshape((ngrid,ngrid))
+            # Update title with the time step
+
+            ax.set_title("t_step = {0}".format(tt))
+
+            # Force re-drawing the figure
+            
+            f.canvas.draw()
+            f.canvas.flush_events()
+
     
